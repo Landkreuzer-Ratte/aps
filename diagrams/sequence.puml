@@ -1,5 +1,5 @@
-@startuml perimeter_sequence
-title Обработка событий в системе охраны периметра — вариант 25
+@startuml sequence
+
 autonumber
 
 participant "Управляющий цикл" as Sim
