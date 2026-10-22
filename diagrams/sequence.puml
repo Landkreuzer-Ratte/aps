@@ -1,0 +1,99 @@
+@startuml perimeter_sequence
+title Обработка событий в системе охраны периметра — вариант 25
+autonumber
+
+participant "Управляющий цикл" as Sim
+participant "Камера" as Camera
+participant "Календарь событий" as Calendar
+participant "Диспетчер постановки" as Admission
+database "Буфер" as Buffer
+participant "Диспетчер выбора" as Selection
+participant "Пул приборов" as Pool
+participant "Аналитический модуль" as Module
+participant "Статистика" as Stats
+participant "Вывод" as View
+
+note over Sim, View
+end note
+
+== HappyFlow: буфер пуст, прибор свободен ==
+
+note over Sim: Триггер: наступило время обнаружения
+Sim -> Calendar: Взять ближайшее событие
+Calendar --> Sim: Обнаружениее от камеры
+Sim -> Camera: Сформировать событие (ИЗ1)
+Camera --> Sim: Новое событие
+Sim -> Camera: Запланировать следующее обнаружение
+Camera -> Calendar: Добавить в календарь
+Sim -> Stats: Учесть сформированное событие
+
+Sim -> Admission: Поставить событие в буфер
+Admission -> Buffer: Навйти свободную ячейку (Д1ОЗ3)
+Buffer --> Admission: Номер ячейки
+Admission -> Buffer: Записать событие
+
+note over Sim: Триггер: событие поставлено в буфер
+Sim -> Selection: Назначить событие на прибор
+Selection -> Pool: Найти свободный прибор (Д2П1)
+Pool --> Selection: Номер прибора
+Selection -> Buffer: Взять самое позднее событие (Д2Б2)
+Buffer --> Selection: Событие
+Selection -> Module: Начать анализ
+Module --> Selection: Время окончания (ПЗ2)
+Selection -> Calendar: Запланировать окончание анализа
+Sim -> View: Показать состояние (ОД1)
+
+== Перегрузка: буфер полон, приборы заняты ==
+
+note over Sim: Триггер: наступило время обнаружения
+Sim -> Admission: Поставить новое событие в буфер
+Admission -> Buffer: Найти свободную ячейку (Д1ОЗ3)
+Buffer --> Admission: Свободных ячеек нет
+Admission -> Buffer: Найти самое старое событие (Д1ОО3)
+Buffer --> Admission: Старое событие и его ячейка
+Admission -> Buffer: Убрать старое событие
+Admission -> Stats: Учесть отказ
+Admission -> Buffer: Записать новое событие в эту ячейку
+
+note over Sim: Триггер: событие поставлено в буфер
+Sim -> Selection: Назначить событие на прибор
+Selection -> Pool: Найти свободный прибор (Д2П1)
+Pool --> Selection: Все приборы заняты
+note over Selection, Pool: . Отказ возможен только в буфере
+
+loop Пока все приборы заняты
+    Sim -> Sim: Обработать следующие события календаря
+end
+
+
+
+note over Sim: Триггер: наступило окончание анализа
+Sim -> Module: Завершить анализ
+Module --> Sim: Обработанное событие
+Sim -> Stats: Учесть обработанное событие
+
+note over Sim: триггер: прибор освободился
+Sim -> Selection: Назначить событие на прибор
+Selection -> Buffer: Есть ли события?
+Buffer --> Selection: Да или нет
+
+alt В буфере есть события
+    Selection -> Pool: Найти свободный прибор (Д2П1)
+    Pool --> Selection: Номер прибора
+    Selection -> Buffer: Взять самое позднее событие (Д2Б2)
+    Buffer --> Selection: Событие
+    Selection -> Module: Начать анализ
+    Module --> Selection: Время окончания (ПЗ2)
+    Selection -> Calendar: Заплнировать окончание анализа
+else Буфер пуст
+    Selection --> Sim: Прибор остаётся свободным
+end
+Sim -> View: Показать смостояние (ОД1)
+
+== Завершение ==
+
+Sim -> Stats: Рассчитать итоги
+Stats --> Sim: Сводка
+Sim -> View: Вывести сводную таблицу (ОР1)
+
+@enduml
