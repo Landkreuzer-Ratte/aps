@@ -1,4 +1,4 @@
-@startuml classes
+@startuml class
 
 skinparam classAttributeIconSize 0
 
