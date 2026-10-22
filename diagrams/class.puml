@@ -1,0 +1,193 @@
+@startuml perimeter_classes
+
+skinparam classAttributeIconSize 0
+
+class Simulation {
+  -cameras: Camera[]
+  -calendar: EventCalendar
+  -buffer: Buffer
+  -modulePool: ModulePool
+  -admission: AdmissionDispatcher
+  -selection: SelectionDispatcher
+  -statistics: Statistics
+  -stepView: StepView
+  -summaryView: SummaryView
+  +runStep(): void
+  +runAuto(requestCount: int): voidтвф
+}
+
+class Camera {
+  -id: int
+  -meanInterval: double
+  -calendar: EventCalendar
+  +generateEvent(): DetectionEvent
+  +scheduleNext(): void
+}
+
+class DetectionEvent {
+  -id: int
+  -cameraId: int
+  -targetX: double
+  -targetY: double
+  -signature: SignatureType
+  -confidence: int
+  -mode: DayNight
+  -perimeterCrossed: boolean
+  -arrivedAt: double
+  -queuedAt: double
+  -startedAt: double
+  -finishedAt: double
+  +waitTime(): double
+  +sojournTime(): double
+}
+
+enum SignatureType {
+  HUMAN
+  VEHICLE
+  ANIMAL
+}
+
+enum DayNight {
+  DAY
+  NIGHT
+}
+
+class EventCalendar {
+  -events: Event[]
+  +schedule(event: Event): void
+  +next(): Event
+}
+
+class Event {
+  -time: double
+  -type: EventType
+  -cameraId: ште
+  -moduleId: int
+}
+
+enum EventType {
+  DETECTION_ARRIVAL
+  ANALYSIS_COMPLETION
+}
+
+class Buffer {
+  -slots: DetectionEvent[]
+  +firstFreeSlot(): int
+  +oldestSlot(): int
+  +newestSlot(): int
+  +put(slot: int, event: DetectionEvent): void
+  +remove(slot: int): DetectionEvent
+  +isEmpty(): boolean
+}
+
+class AdmissionDispatcher {
+  -buffer: Buffer
+  -statistics: Statistics
+  +accept(event: DetectionEvent): void
+}
+
+class SelectionDispatcher {
+  -buffer: Buffer
+  -modulePool: ModulePool
+  -calendar: EventCalendar
+  +onEventQueued(): void
+  +onModuleFreed(): void
+}
+
+class ModulePool {
+  -modules: AnalyticsModule[]
+  +firstFree(): int
+}
+
+class AnalyticsModule {
+  -id: int
+  -serviceMin: doublee
+  -serviceMax: double
+  -currentEvent: DetectionEvent
+  +isFree(): boolean
+  +start(event: DetectionEvent): double
+  +finish(): DetectionEvent
+}
+
+class Statistics {
+  -generated: int[]
+  -rejected: int[]
+  -completed: int[]
+  -waitSum: double[]
+  -sojournSum: double[]
+  +recordGenerated(event: DetectionEvent): void
+  +recordRejected(event: DetectionEvent): void
+  +recordCompleted(event: DetectionEvent): void
+  +summary(): Summary
+}
+
+class Summary {
+  -rejectionProbability: double
+  -averageWaitTime: double
+  -averageSojournTime: double
+  -moduleUtilization: double[]
+}
+
+class StepView {
+  -calendar: EventCalendar
+  -buffer: Buffer
+  -modulePool: ModulePool
+  -statistics: Statistics
+  +render(): void
+}
+
+class SummaryView {
+  +render(summary: Summary): void
+}
+
+Simulation *-- EventCalendar
+Simulation *-- Buffer
+Simulation *-- ModulePool
+Simulation *-- AdmissionDispatcher
+Simulation *-- SelectionDispatcher
+Simulation *-- Statistics
+Simulation o-- "1..*" Camera
+Simulation o-- StepView
+Simulation o-- SummaryView
+
+Camera --> EventCalendar
+Camera ..> DetectionEvent : формирует
+EventCalendar o-- "0..*" Event
+Event --> EventType
+DetectionEvent --> SignatureType
+DetectionEvent --> DayNight
+
+AdmissionDispatcher --> Buffer
+AdmissionDispatcher --> Statistics
+SelectionDispatcher --> Buffer
+SelectionDispatcher --> ModulePool
+SelectionDispatcher --> EventCalendar
+Buffer o-- "0..*" DetectionEvent
+ModulePool *-- "1..*" AnalyticsModule
+AnalyticsModule --> DetectionEvent
+Statistics ..> Summary : формирует
+StepView --> EventCalendar
+StepView --> Buffer
+StepView --> ModulePool
+StepView --> Statistics
+SummaryView ..> Summary
+
+note right of Buffer
+Д1ОЗ3: первая свободная ячейка, без сдвига.
+Д1ОО3: вытесняется самая старая заявка.
+Д2Б2: на анализ берётся самая поздняя (LiFO).
+Старшинство определяется по arrivedAt.
+firstFreeSlot() возвращает -1, если мест нет.
+end note
+
+note right of ModulePool
+Д2П1: поиск свободного прибора
+всегда с прибора № 1, без указателя.
+end note
+
+note right of Camera
+ИЗ1: пуассоновский поток,
+экспоненциальные интервалы.
+end note
+
+@enduml
