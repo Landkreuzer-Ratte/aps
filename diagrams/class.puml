@@ -1,4 +1,4 @@
-@startuml perimeter_classes
+@startuml classes
 
 skinparam classAttributeIconSize 0
 
