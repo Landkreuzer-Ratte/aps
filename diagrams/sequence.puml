@@ -13,14 +13,11 @@ participant "Аналитический модуль" as Module
 participant "Статистика" as Stats
 participant "Вывод" as View
 
-note over Sim, View
-end note
-
 == HappyFlow: буфер пуст, прибор свободен ==
 
-note over Sim: Триггер: наступило время обнаружения
+note over Calendar: Триггер: наступило время обнаружения
 Sim -> Calendar: Взять ближайшее событие
-Calendar --> Sim: Обнаружениее от камеры
+Calendar --> Sim: Время обнаружения наступило
 Sim -> Camera: Сформировать событие (ИЗ1)
 Camera --> Sim: Новое событие
 Sim -> Camera: Запланировать следующее обнаружение
@@ -28,9 +25,10 @@ Camera -> Calendar: Добавить в календарь
 Sim -> Stats: Учесть сформированное событие
 
 Sim -> Admission: Поставить событие в буфер
-Admission -> Buffer: Навйти свободную ячейку (Д1ОЗ3)
+Admission -> Buffer: Найти свободную ячейку (Д1ОЗ3)
 Buffer --> Admission: Номер ячейки
 Admission -> Buffer: Записать событие
+Admission --> Sim: Событие поставлено в буфер
 
 note over Sim: Триггер: событие поставлено в буфер
 Sim -> Selection: Назначить событие на прибор
@@ -45,7 +43,9 @@ Sim -> View: Показать состояние (ОД1)
 
 == Перегрузка: буфер полон, приборы заняты ==
 
-note over Sim: Триггер: наступило время обнаружения
+note over Calendar: Триггер: наступило время обнаружения
+Sim -> Calendar: Взять ближайшее событие
+Calendar --> Sim: Время обнаружения наступило
 Sim -> Admission: Поставить новое событие в буфер
 Admission -> Buffer: Найти свободную ячейку (Д1ОЗ3)
 Buffer --> Admission: Свободных ячеек нет
@@ -54,25 +54,28 @@ Buffer --> Admission: Старое событие и его ячейка
 Admission -> Buffer: Убрать старое событие
 Admission -> Stats: Учесть отказ
 Admission -> Buffer: Записать новое событие в эту ячейку
+Admission --> Sim: Событие поставлено в буфер
 
 note over Sim: Триггер: событие поставлено в буфер
 Sim -> Selection: Назначить событие на прибор
 Selection -> Pool: Найти свободный прибор (Д2П1)
 Pool --> Selection: Все приборы заняты
-note over Selection, Pool: . Отказ возможен только в буфере
+Selection --> Sim: Приборов нет, событие ждёт в буфере
+note over Selection, Pool: Отказ возможен только в буфере
 
 loop Пока все приборы заняты
     Sim -> Sim: Обработать следующие события календаря
 end
 
-
-
-note over Sim: Триггер: наступило окончание анализа
+note over Calendar: Триггер: наступило окончание анализа
+Calendar --> Sim: Наступило окончание анализа
 Sim -> Module: Завершить анализ
 Module --> Sim: Обработанное событие
 Sim -> Stats: Учесть обработанное событие
+Sim -> Pool: Освободить прибор
+Pool --> Sim: Прибор освободился
 
-note over Sim: триггер: прибор освободился
+note over Sim: Триггер: прибор освободился
 Sim -> Selection: Назначить событие на прибор
 Selection -> Buffer: Есть ли события?
 Buffer --> Selection: Да или нет
@@ -84,11 +87,11 @@ alt В буфере есть события
     Buffer --> Selection: Событие
     Selection -> Module: Начать анализ
     Module --> Selection: Время окончания (ПЗ2)
-    Selection -> Calendar: Заплнировать окончание анализа
+    Selection -> Calendar: Запланировать окончание анализа
 else Буфер пуст
     Selection --> Sim: Прибор остаётся свободным
 end
-Sim -> View: Показать смостояние (ОД1)
+Sim -> View: Показать состояние (ОД1)
 
 == Завершение ==
 
